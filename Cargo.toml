@@ -2,5 +2,7 @@
 name = "gibbon"
 version = "0.1.0"
 authors = ["Johannes Hoff <johshoff@gmail.com>"]
+description = "WIP implementation of Facebook's gorilla database in rust"
+license = "GPL-3.0"
 
 [dependencies]
