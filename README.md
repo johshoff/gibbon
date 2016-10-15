@@ -22,12 +22,16 @@ The Gorilla Paper leaves some details out:
   former, the window will keep the same if we reuse it, if not it might shrink
   as new data comes in. Unsure about the best solution. (`[XORORLEADING]` in
   code)
+- IntStream writes the number as the two's compliment using the available bits.
+  This is fast for writing, but requires extra logic for reading. Might be
+  worth revisiting to see if read speed can be improved by doing the logic on
+  the write side.
 
 Further work
 ------------
 
 - Measure and optimize performance
-- Include the timestamp compressor
 - Resolve open questions in _Implementation details_
 - Implement the rest of the paper
 - Investigate whether Rust's Write and Read traits could be used instead of hand rolled traits
+- Separate IntStream and DoubleStream out in different files

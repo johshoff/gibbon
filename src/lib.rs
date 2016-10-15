@@ -6,6 +6,142 @@ pub mod vec_stream;
 pub mod stream;
 pub use stream::*;
 
+pub enum IntStreamState {
+    Initial {
+        header_time: u64 // aligned to a two hour window
+    },
+    Following {
+        value: u64,
+        delta: i64,
+    },
+}
+
+pub struct IntStream<W: Writer> {
+    state: IntStreamState,
+    writer: W,
+}
+
+impl<W: Writer> IntStream<W> {
+    pub fn new(writer: W, header_time: u64) -> Self {
+        IntStream {
+            state: IntStreamState::Initial { header_time: header_time },
+            writer: writer,
+        }
+    }
+
+    pub fn push(&mut self, number: u64) {
+        let delta = match self.state {
+            IntStreamState::Initial { header_time } => {
+                assert!(number >= header_time); // header time should be rounded down
+                let delta = number - header_time;
+                assert!(delta <= (1 << 14)); // enough to store more than four hours in seconds
+                self.writer.write(number, 14);
+
+                delta as i64
+            },
+            IntStreamState::Following { value: prev_value, delta: prev_delta } => {
+                let delta = (number - prev_value) as i64;
+                let delta_of_deltas = delta - prev_delta;
+                let delta_of_deltas_bits : u64 = unsafe { mem::transmute(delta_of_deltas) };
+
+                // will only work assuming two's compliment architecture
+                if delta_of_deltas == 0 {
+                    self.writer.write(0, 1);
+                } else if delta_of_deltas >= -63 && delta_of_deltas <= 64 {
+                    self.writer.write(0b10, 2);
+                    self.writer.write(delta_of_deltas_bits & ((1 << 7) - 1), 7);
+                } else if delta_of_deltas >= -255 && delta_of_deltas <= 256 {
+                    self.writer.write(0b110, 3);
+                    self.writer.write(delta_of_deltas_bits & ((1 << 9) - 1), 9);
+                } else if delta_of_deltas >= -2047 && delta_of_deltas <= 2048 {
+                    self.writer.write(0b1110, 4);
+                    self.writer.write(delta_of_deltas_bits & ((1 << 12) - 1), 12);
+                } else {
+                    self.writer.write(0b1111, 4);
+                    self.writer.write(delta_of_deltas_bits & ((1 << 32) - 1), 32);
+                }
+
+                delta
+            }
+        };
+
+        self.state = IntStreamState::Following {
+            value: number,
+            delta: delta
+        };
+    }
+}
+
+
+
+pub struct IntStreamIterator<R> where R: Reader {
+    reader: R,
+    state: IntStreamState,
+}
+
+impl<R> IntStreamIterator<R> where R: Reader {
+    pub fn new(reader: R, header_time: u64) -> Self {
+        IntStreamIterator {
+            reader: reader,
+            state: IntStreamState::Initial { header_time: header_time },
+        }
+    }
+}
+
+impl<R> Iterator for IntStreamIterator<R> where R: Reader {
+    type Item = u64;
+
+    fn next(&mut self) -> Option<u64> {
+        let values = match self.state {
+            IntStreamState::Initial { header_time } => {
+                self.reader.read(14).and_then(|delta| Some((header_time + delta, delta as i64)))
+            }
+            IntStreamState::Following { value, delta } => {
+                match self.reader.read(1) {
+                    Some(0) => Some((value.wrapping_add(delta as u64), delta)),
+                    Some(1) => {
+                        // unwrapping reads from now on, on the assumption that the stream is
+                        // well-formed
+
+                        // TODO: signed delta_of_deltas
+
+                        let num_bits = if self.reader.read(1).unwrap() == 0 { // 10
+                            7
+                        } else if self.reader.read(1).unwrap() == 0 { // 110
+                            9
+                        } else if self.reader.read(1).unwrap() == 0 { // 1110
+                            12
+                        } else { // 1111
+                            32
+                        };
+
+                        let mut delta_of_deltas = self.reader.read(num_bits).unwrap();
+                        let msb = 1 << (num_bits - 1); // value of most significant bit
+                        if delta_of_deltas & msb != 0 {
+                            // propagate two's compliment sign to all 64 bits
+                            delta_of_deltas |= !(msb - 1);
+                        }
+
+                        let new_delta = delta + (delta_of_deltas as i64);
+                        let new_value = value.wrapping_add(new_delta as u64);
+                        Some((new_value, new_delta))
+                    }
+                    None => None,
+                    _ => panic!("Binary read should not be able to return anything but 0 or 1")
+                }
+            }
+        };
+
+        if let Some((value, delta)) = values {
+            self.state = IntStreamState::Following { value: value, delta: delta };
+            Some(value)
+        } else {
+            None
+        }
+    }
+}
+
+
 pub enum DoubleStreamState {
     Initial,
     Following {
@@ -327,6 +463,83 @@ mod tests {
         }
 
         let r = DoubleStreamIterator::new(vec_stream::VecReader::new(c.writer.bit_vector, c.writer.used_bits_last_elm));
+
+        for (from_vector, from_stream) in numbers.iter().zip(r) {
+            assert_eq!(*from_vector, from_stream);
+        }
+    }
+
+    #[test]
+    fn all_zeros_int() {
+        let mut c = IntStream::new(StringWriter::new(), 0);
+        c.push(0); assert_eq!(c.writer.string, "00000000000000");
+        c.push(0); assert_eq!(c.writer.string, "000000000000000");
+        c.push(0); assert_eq!(c.writer.string, "0000000000000000");
+        c.push(0); assert_eq!(c.writer.string, "00000000000000000");
+        c.push(0); assert_eq!(c.writer.string, "000000000000000000");
+
+        let mut r = IntStreamIterator::new(StringReader::new(c.writer.string), 0); // TODO: change to DoubleStreamIterator and watch it... PASS?!
+        assert_eq!(r.next().unwrap(), 0);
+        assert_eq!(r.next().unwrap(), 0);
+        assert_eq!(r.next().unwrap(), 0);
+        assert_eq!(r.next().unwrap(), 0);
+        assert_eq!(r.next().unwrap(), 0);
+        assert_eq!(r.next(), None);
+    }
+
+    #[test]
+    fn int_less_than_64() {
+        let mut c = IntStream::new(StringWriter::new(), 0);
+        c.push(1); assert_eq!(c.writer.string, "00000000000001");                       // delta 1
+        c.push(2); assert_eq!(c.writer.string, "000000000000010");                      // delta 1, dod = 0
+        c.push(3); assert_eq!(c.writer.string, "0000000000000100");                     // delta 1, dod = 0
+        c.push(4); assert_eq!(c.writer.string, "00000000000001000");                    // delta 1, dod = 0
+        c.push(4); assert_eq!(c.writer.string, "00000000000001000101111111");           // delta 0, dod = -1
+        c.push(4); assert_eq!(c.writer.string, "000000000000010001011111110");          // delta 0, dod = 0
+        c.push(6); assert_eq!(c.writer.string, "000000000000010001011111110100000010"); // delta 2, dod = 2
+
+        let mut r = IntStreamIterator::new(StringReader::new(c.writer.string), 0);
+        assert_eq!(r.next().unwrap(), 1);
+        assert_eq!(r.next().unwrap(), 2);
+        assert_eq!(r.next().unwrap(), 3);
+        assert_eq!(r.next().unwrap(), 4);
+        assert_eq!(r.next().unwrap(), 4);
+        assert_eq!(r.next().unwrap(), 4);
+        assert_eq!(r.next().unwrap(), 6);
+        assert_eq!(r.next(), None);
+    }
+
+    #[test]
+    fn int_all_steps() {
+        let mut c = IntStream::new(StringWriter::new(), 0);
+        c.push(    1); assert_eq!(c.writer.string, "00000000000001");                                                                          // delta     1
+        c.push(   51); assert_eq!(c.writer.string, "00000000000001100110001");                                                                 // delta    50, dod = 49
+        c.push(  251); assert_eq!(c.writer.string, "00000000000001100110001110010010110");                                                     // delta   200, dod = 150
+        c.push( 1251); assert_eq!(c.writer.string, "000000000000011001100011100100101101110001100100000");                                     // delta  1000, dod = 800
+        c.push(11251); assert_eq!(c.writer.string, "000000000000011001100011100100101101110001100100000111100000000000000000010001100101000"); // delta 10000, dod = 9000
+
+        let mut r = IntStreamIterator::new(StringReader::new(c.writer.string), 0);
+        assert_eq!(r.next().unwrap(),     1);
+        assert_eq!(r.next().unwrap(),    51);
+        assert_eq!(r.next().unwrap(),   251);
+        assert_eq!(r.next().unwrap(),  1251);
+        assert_eq!(r.next().unwrap(), 11251);
+        assert_eq!(r.next(), None);
+    }
+
+    #[test]
+    fn fuzzer_vec_int () {
+        // throw some random values at it and see if they decode correctly
+        let header_time = 0;
+        let mut c = IntStream::new(vec_stream::VecWriter::new(), header_time);
+        let mut numbers = Vec::new();
+
+        for i in header_time..1_000 {
+            c.push(i);
+            numbers.push(i);
+        }
+
+        let r = IntStreamIterator::new(vec_stream::VecReader::new(c.writer.bit_vector, c.writer.used_bits_last_elm), header_time);
 
         for (from_vector, from_stream) in numbers.iter().zip(r) {
             assert_eq!(*from_vector, from_stream);
