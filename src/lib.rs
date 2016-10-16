@@ -95,8 +95,6 @@ impl IntStreamParser {
                         // unwrapping reads from now on, on the assumption that the stream is
                         // well-formed
 
-                        // TODO: signed delta_of_deltas
-
                         let num_bits = if reader.read(1).unwrap() == 0 { // 10
                             7
                         } else if reader.read(1).unwrap() == 0 { // 110
@@ -561,7 +559,7 @@ mod tests {
         c.push(0, &mut w); assert_eq!(w.string, "00000000000000000");
         c.push(0, &mut w); assert_eq!(w.string, "000000000000000000");
 
-        let mut r = IntStreamIterator::new(StringReader::new(w.string), 0); // TODO: change to DoubleStreamIterator and watch it... PASS?!
+        let mut r = IntStreamIterator::new(StringReader::new(w.string), 0);
         assert_eq!(r.next().unwrap(), 0);
         assert_eq!(r.next().unwrap(), 0);
         assert_eq!(r.next().unwrap(), 0);
