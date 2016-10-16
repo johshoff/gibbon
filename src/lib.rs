@@ -425,11 +425,11 @@ mod tests {
         c.push(0f64, &mut w); assert_eq!(w.string, "00000000000000000000000000000000000000000000000000000000000000000000");
 
         let mut r = DoubleStreamIterator::new(StringReader::new(w.string));
-        assert_eq!(r.next().unwrap(), 0f64);
-        assert_eq!(r.next().unwrap(), 0f64);
-        assert_eq!(r.next().unwrap(), 0f64);
-        assert_eq!(r.next().unwrap(), 0f64);
-        assert_eq!(r.next().unwrap(), 0f64);
+        assert_eq!(r.next(), Some(0f64));
+        assert_eq!(r.next(), Some(0f64));
+        assert_eq!(r.next(), Some(0f64));
+        assert_eq!(r.next(), Some(0f64));
+        assert_eq!(r.next(), Some(0f64));
         assert_eq!(r.next(), None);
     }
 
@@ -444,8 +444,8 @@ mod tests {
         c.push(1f64, &mut w); assert_eq!(w.string, "000000000000000000000000000000000000000000000000000000000000000011000100010011111111111");
 
         let mut r = DoubleStreamIterator::new(StringReader::new(w.string));
-        assert_eq!(r.next().unwrap(), 0f64);
-        assert_eq!(r.next().unwrap(), 1f64);
+        assert_eq!(r.next(), Some(0f64));
+        assert_eq!(r.next(), Some(1f64));
         assert_eq!(r.next(), None);
     }
 
@@ -464,8 +464,8 @@ mod tests {
         c.push(10f64, &mut w); assert_eq!(w.string, "01000000001001100000000000000000000000000000000000000000000000001000000000000001");
 
         let mut r = DoubleStreamIterator::new(StringReader::new(w.string));
-        assert_eq!(r.next().unwrap(), 11f64);
-        assert_eq!(r.next().unwrap(), 10f64);
+        assert_eq!(r.next(), Some(11f64));
+        assert_eq!(r.next(), Some(10f64));
         assert_eq!(r.next(), None);
     }
 
@@ -482,8 +482,8 @@ mod tests {
         c.push(all_significant, &mut w); // 1000000000000000000000000000000000000000000000000000000000000001
 
         let mut r = DoubleStreamIterator::new(StringReader::new(w.string));
-        assert_eq!(r.next().unwrap(), 11f64);
-        assert_eq!(r.next().unwrap(), all_significant);
+        assert_eq!(r.next(), Some(11f64));
+        assert_eq!(r.next(), Some(all_significant));
         assert_eq!(r.next(), None);
     }
 
@@ -504,8 +504,8 @@ mod tests {
         assert_eq!(w.string, "00000000000000000000000000000000000000000000000000000000000000001111111100000000000000000000000000000000000001");
 
         let mut r = DoubleStreamIterator::new(StringReader::new(w.string));
-        assert_eq!(r.next().unwrap(), 0f64);
-        assert_eq!(r.next().unwrap(), last_significant);
+        assert_eq!(r.next(), Some(0f64));
+        assert_eq!(r.next(), Some(last_significant));
         assert_eq!(r.next(), None);
     }
 
@@ -560,11 +560,11 @@ mod tests {
         c.push(0, &mut w); assert_eq!(w.string, "000000000000000000");
 
         let mut r = IntStreamIterator::new(StringReader::new(w.string), 0);
-        assert_eq!(r.next().unwrap(), 0);
-        assert_eq!(r.next().unwrap(), 0);
-        assert_eq!(r.next().unwrap(), 0);
-        assert_eq!(r.next().unwrap(), 0);
-        assert_eq!(r.next().unwrap(), 0);
+        assert_eq!(r.next(), Some(0));
+        assert_eq!(r.next(), Some(0));
+        assert_eq!(r.next(), Some(0));
+        assert_eq!(r.next(), Some(0));
+        assert_eq!(r.next(), Some(0));
         assert_eq!(r.next(), None);
     }
 
@@ -581,13 +581,13 @@ mod tests {
         c.push(6, &mut w); assert_eq!(w.string, "000000000000010001011111110100000010"); // delta 2, dod = 2
 
         let mut r = IntStreamIterator::new(StringReader::new(w.string), 0);
-        assert_eq!(r.next().unwrap(), 1);
-        assert_eq!(r.next().unwrap(), 2);
-        assert_eq!(r.next().unwrap(), 3);
-        assert_eq!(r.next().unwrap(), 4);
-        assert_eq!(r.next().unwrap(), 4);
-        assert_eq!(r.next().unwrap(), 4);
-        assert_eq!(r.next().unwrap(), 6);
+        assert_eq!(r.next(), Some(1));
+        assert_eq!(r.next(), Some(2));
+        assert_eq!(r.next(), Some(3));
+        assert_eq!(r.next(), Some(4));
+        assert_eq!(r.next(), Some(4));
+        assert_eq!(r.next(), Some(4));
+        assert_eq!(r.next(), Some(6));
         assert_eq!(r.next(), None);
     }
 
@@ -602,11 +602,11 @@ mod tests {
         c.push(11251, &mut w); assert_eq!(w.string, "000000000000011001100011100100101101110001100100000111100000000000000000010001100101000"); // delta 10000, dod = 9000
 
         let mut r = IntStreamIterator::new(StringReader::new(w.string), 0);
-        assert_eq!(r.next().unwrap(),     1);
-        assert_eq!(r.next().unwrap(),    51);
-        assert_eq!(r.next().unwrap(),   251);
-        assert_eq!(r.next().unwrap(),  1251);
-        assert_eq!(r.next().unwrap(), 11251);
+        assert_eq!(r.next(), Some(    1));
+        assert_eq!(r.next(), Some(   51));
+        assert_eq!(r.next(), Some(  251));
+        assert_eq!(r.next(), Some( 1251));
+        assert_eq!(r.next(), Some(11251));
         assert_eq!(r.next(), None);
     }
 
