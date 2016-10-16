@@ -33,7 +33,7 @@ impl IntStream {
                 assert!(number >= header_time); // header time should be rounded down
                 let delta = number - header_time;
                 assert!(delta <= (1 << 14)); // enough to store more than four hours in seconds
-                writer.write(number, 14);
+                writer.write(delta, 14);
 
                 delta as i64
             },
@@ -109,7 +109,7 @@ impl IntStreamParser {
 
                         let mut delta_of_deltas = reader.read(num_bits).unwrap();
                         let msb = 1 << (num_bits - 1); // value of most significant bit
-                        if delta_of_deltas & msb != 0 {
+                        if delta_of_deltas > msb { // greater than, because ranges are inclusive on the positive side, e.g. [-63, 64]
                             // propagate two's compliment sign to all 64 bits
                             delta_of_deltas |= !(msb - 1);
                         }
@@ -634,16 +634,16 @@ mod tests {
 
     #[test]
     fn time_and_value () {
-        let header_time = 0;
+        let header_time = 10000;
         let mut w = vec_stream::VecWriter::new();
         let mut c = TimeAndValueStream::new(header_time);
 
         let mut numbers = Vec::new();
-        numbers.push((1, 0.34f64));
-        numbers.push((2, 0.35f64));
-        numbers.push((3, 0.72f64));
-        numbers.push((4, 0.42f64));
-        numbers.push((4, 1.12f64));
+        numbers.push((10005, 0.34f64));
+        numbers.push((10065, 0.35f64));
+        numbers.push((10124, 0.72f64));
+        numbers.push((10247, 0.42f64));
+        numbers.push((10365, 1.12f64));
 
         for &(timestamp, value) in numbers.iter() {
             c.push(timestamp, value, &mut w);
