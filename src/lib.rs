@@ -542,7 +542,7 @@ mod tests {
             numbers.push(i);
         }
 
-        let r = DoubleStreamIterator::new(vec_stream::VecReader::new(w.bit_vector, w.used_bits_last_elm));
+        let r = DoubleStreamIterator::new(vec_stream::VecReader::new(&w.bit_vector, w.used_bits_last_elm));
 
         for (from_vector, from_stream) in numbers.iter().zip(r) {
             assert_eq!(*from_vector, from_stream);
@@ -623,7 +623,7 @@ mod tests {
             numbers.push(i);
         }
 
-        let r = IntStreamIterator::new(vec_stream::VecReader::new(w.bit_vector, w.used_bits_last_elm), header_time);
+        let r = IntStreamIterator::new(vec_stream::VecReader::new(&w.bit_vector, w.used_bits_last_elm), header_time);
 
         for (from_vector, from_stream) in numbers.iter().zip(r) {
             assert_eq!(*from_vector, from_stream);
@@ -647,7 +647,7 @@ mod tests {
             c.push(timestamp, value, &mut w);
         }
 
-        let r = TimeAndValueIterator::new(vec_stream::VecReader::new(w.bit_vector, w.used_bits_last_elm), header_time);
+        let r = TimeAndValueIterator::new(vec_stream::VecReader::new(&w.bit_vector, w.used_bits_last_elm), header_time);
 
         for (from_vector, from_stream) in numbers.iter().zip(r) {
             assert_eq!(*from_vector, from_stream);

@@ -45,20 +45,15 @@ impl Writer for VecWriter {
     }
 }
 
-pub struct VecReader {
-    bit_vector: Vec<u64>,
+pub struct VecReader<'a> {
+    bit_vector: &'a Vec<u64>,
     index: usize,
     read_bits_current_index: u8,
     num_bits_last_elm: u8,
 }
 
-impl VecReader {
-    pub fn new(mut data: Vec<u64>, num_bits_last_elm: u8) -> Self {
-        if data.len() == 0 {
-            // simplify logic later by assuming we have a non-zero size
-            data.push(0);
-        }
-
+impl<'a> VecReader<'a> {
+    pub fn new(data: &'a Vec<u64>, num_bits_last_elm: u8) -> Self {
         VecReader {
             bit_vector: data,
             index: 0,
@@ -68,8 +63,14 @@ impl VecReader {
     }
 }
 
-impl Reader for VecReader {
+impl<'a> Reader for VecReader<'a> {
     fn read(&mut self, count: u8) -> Option<u64> {
+        if self.bit_vector.len() == 0 {
+            // TODO: would be nice if we could avoid this test every time. See
+            // `read_empty_vector` for when it's needed.
+            return None;
+        }
+
         let total_bits = (self.bit_vector.len() - 1) * 64 + self.num_bits_last_elm as usize;
         let read_bits = self.index * 64 + self.read_bits_current_index as usize;
         let remaining_bits = total_bits - read_bits;
@@ -138,7 +139,8 @@ mod tests {
 
     #[test]
     fn read_first_word() {
-        let mut r = VecReader::new(vec![0b1101000001000000000000000000010000000000000000000000000000000001], 64);
+        let data = vec![0b1101000001000000000000000000010000000000000000000000000000000001];
+        let mut r = VecReader::new(&data, 64);
         assert_eq!(r.read(4), Some(0b1101));
         assert_eq!(r.read(4), Some(0b0000));
         assert_eq!(r.read(1), Some(0b0));
@@ -154,8 +156,16 @@ mod tests {
     #[test]
     fn read_unaligned_word() {
         let p = 0b1101000001000000000000000000010000000000000000000000000000000001;
-        let mut r = VecReader::new(vec![p, p], 64);
+        let data = vec![p, p];
+        let mut r = VecReader::new(&data, 64);
         assert_eq!(r.read(63), Some(p >> 1));
         assert_eq!(r.read(5), Some(0b11101));
+    }
+
+    #[test]
+    fn read_empty_vector() {
+        let data = vec![];
+        let mut r = VecReader::new(&data, 0);
+        assert_eq!(r.read(1), None);
     }
 }
