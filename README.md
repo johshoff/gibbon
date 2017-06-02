@@ -2,6 +2,21 @@ This is an incomplete implementation of the memory format of Facebook's Gorilla
 database in Rust, as described in [Gorilla: A Fast, Scalable, In-Memory Time
 Series Database](http://www.vldb.org/pvldb/vol8/p1816-teller.pdf).
 
+Example
+-------
+
+There is an example at [examples/csv_to_packed.rs](examples/csv_to_packed.rs).
+Run as follows:
+
+    cargo run --release --example csv_to_packed
+
+This will read the file [examples/test_data.csv](examples/test_data.csv) and
+compress it in memory. It's not a very interesting file, but replacing it with
+your favorite data will show compression ratio and speed differences between
+compressed and uncompressed reads.
+
+There are also examples in the test code in the modules.
+
 Implementation details
 ----------------------
 

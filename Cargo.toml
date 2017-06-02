@@ -6,3 +6,7 @@ description = "WIP implementation of Facebook's gorilla database in rust"
 license = "GPL-3.0"
 
 [dependencies]
+
+[dev-dependencies]
+csv = "0.14"
+time = "0.1"
