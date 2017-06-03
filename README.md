@@ -37,10 +37,10 @@ The Gorilla Paper leaves some details out:
   former, the window will keep the same if we reuse it, if not it might shrink
   as new data comes in. Unsure about the best solution. (`[XORORLEADING]` in
   code)
-- IntStream writes the number as the two's compliment using the available bits.
-  This is fast for writing, but requires extra logic for reading. Might be
-  worth revisiting to see if read speed can be improved by doing the logic on
-  the write side.
+- IntStream writes the number plus a bias so that the resulting number is
+  always a non-negative number. This makes it fast to encode and decode without
+  branching or being dependent on hardware representation of numbers. The
+  initial version was not as smart and took about twice as long to decode.
 
 Further work
 ------------

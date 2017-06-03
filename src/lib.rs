@@ -40,23 +40,21 @@ impl IntStream {
             IntStreamState::Following { value: prev_value, delta: prev_delta } => {
                 let delta = (number - prev_value) as i64;
                 let delta_of_deltas = delta - prev_delta;
-                let delta_of_deltas_bits : u64 = unsafe { mem::transmute(delta_of_deltas) };
 
-                // will only work assuming two's compliment architecture
                 if delta_of_deltas == 0 {
                     writer.write(0, 1);
                 } else if delta_of_deltas >= -63 && delta_of_deltas <= 64 {
                     writer.write(0b10, 2);
-                    writer.write(delta_of_deltas_bits & ((1 << 7) - 1), 7);
+                    writer.write((delta_of_deltas + 63) as u64, 7);
                 } else if delta_of_deltas >= -255 && delta_of_deltas <= 256 {
                     writer.write(0b110, 3);
-                    writer.write(delta_of_deltas_bits & ((1 << 9) - 1), 9);
+                    writer.write((delta_of_deltas + 255) as u64, 9);
                 } else if delta_of_deltas >= -2047 && delta_of_deltas <= 2048 {
                     writer.write(0b1110, 4);
-                    writer.write(delta_of_deltas_bits & ((1 << 12) - 1), 12);
+                    writer.write((delta_of_deltas + 2047) as u64, 12);
                 } else {
                     writer.write(0b1111, 4);
-                    writer.write(delta_of_deltas_bits & ((1 << 32) - 1), 32);
+                    writer.write(delta_of_deltas as u64, 32);
                 }
 
                 delta
@@ -95,24 +93,19 @@ impl IntStreamParser {
                         // unwrapping reads from now on, on the assumption that the stream is
                         // well-formed
 
-                        let num_bits = if reader.read(1).unwrap() == 0 { // 10
-                            7
+                        let (num_bits, bias) = if reader.read(1).unwrap() == 0 { // 10
+                            (7, 63)
                         } else if reader.read(1).unwrap() == 0 { // 110
-                            9
+                            (9, 255)
                         } else if reader.read(1).unwrap() == 0 { // 1110
-                            12
+                            (12, 2047)
                         } else { // 1111
-                            32
+                            (32, 0)
                         };
 
-                        let mut delta_of_deltas = reader.read(num_bits).unwrap();
-                        let msb = 1 << (num_bits - 1); // value of most significant bit
-                        if delta_of_deltas > msb { // greater than, because ranges are inclusive on the positive side, e.g. [-63, 64]
-                            // propagate two's compliment sign to all 64 bits
-                            delta_of_deltas |= !(msb - 1);
-                        }
+                        let delta_of_deltas = reader.read(num_bits).unwrap() as i64 - bias;
 
-                        let new_delta = delta + (delta_of_deltas as i64);
+                        let new_delta = delta + delta_of_deltas;
                         let new_value = value.wrapping_add(new_delta as u64);
                         Some((new_value, new_delta))
                     }
@@ -690,9 +683,9 @@ mod tests {
         c.push(2, &mut w); assert_eq!(w.string, "000000000000010");                      // delta 1, dod = 0
         c.push(3, &mut w); assert_eq!(w.string, "0000000000000100");                     // delta 1, dod = 0
         c.push(4, &mut w); assert_eq!(w.string, "00000000000001000");                    // delta 1, dod = 0
-        c.push(4, &mut w); assert_eq!(w.string, "00000000000001000101111111");           // delta 0, dod = -1
-        c.push(4, &mut w); assert_eq!(w.string, "000000000000010001011111110");          // delta 0, dod = 0
-        c.push(6, &mut w); assert_eq!(w.string, "000000000000010001011111110100000010"); // delta 2, dod = 2
+        c.push(4, &mut w); assert_eq!(w.string, "00000000000001000100111110");           // delta 0, dod = -1
+        c.push(4, &mut w); assert_eq!(w.string, "000000000000010001001111100");          // delta 0, dod = 0
+        c.push(6, &mut w); assert_eq!(w.string, "000000000000010001001111100101000001"); // delta 2, dod = 2
 
         let mut r = IntStreamIterator::new(StringReader::new(w.string), 0);
         assert_eq!(r.next(), Some(1));
@@ -710,10 +703,10 @@ mod tests {
         let mut w = StringWriter::new();
         let mut c = IntStream::new(0);
         c.push(    1, &mut w); assert_eq!(w.string, "00000000000001");                                                                          // delta     1
-        c.push(   51, &mut w); assert_eq!(w.string, "00000000000001100110001");                                                                 // delta    50, dod = 49
-        c.push(  251, &mut w); assert_eq!(w.string, "00000000000001100110001110010010110");                                                     // delta   200, dod = 150
-        c.push( 1251, &mut w); assert_eq!(w.string, "000000000000011001100011100100101101110001100100000");                                     // delta  1000, dod = 800
-        c.push(11251, &mut w); assert_eq!(w.string, "000000000000011001100011100100101101110001100100000111100000000000000000010001100101000"); // delta 10000, dod = 9000
+        c.push(   51, &mut w); assert_eq!(w.string, "00000000000001101110000");                                                                 // delta    50, dod = 49
+        c.push(  251, &mut w); assert_eq!(w.string, "00000000000001101110000110110010101");                                                     // delta   200, dod = 150
+        c.push( 1251, &mut w); assert_eq!(w.string, "000000000000011011100001101100101011110101100011111");                                     // delta  1000, dod = 800
+        c.push(11251, &mut w); assert_eq!(w.string, "000000000000011011100001101100101011110101100011111111100000000000000000010001100101000"); // delta 10000, dod = 9000
 
         let mut r = IntStreamIterator::new(StringReader::new(w.string), 0);
         assert_eq!(r.next(), Some(    1));
