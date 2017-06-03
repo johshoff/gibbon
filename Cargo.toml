@@ -1,9 +1,11 @@
 [package]
 name = "gibbon"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Johannes Hoff <johshoff@gmail.com>"]
 description = "WIP implementation of Facebook's gorilla database in rust"
 license = "GPL-3.0"
+repository = "https://github.com/johshoff/gibbon"
+documentation = "https://docs.rs/gibbon"
 
 [dependencies]
 
