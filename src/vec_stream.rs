@@ -1,3 +1,6 @@
+//! This module provides a writer and writer for bits into a binary vector that
+//! will expand as needed.
+
 pub use stream::{Writer, Reader};
 
 pub struct VecWriter {

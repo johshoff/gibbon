@@ -49,4 +49,6 @@ Further work
 - Resolve open questions in _Implementation details_
 - Implement the rest of the paper
 - Investigate whether Rust's Write and Read traits could be used instead of hand rolled traits
-- Separate IntStream and DoubleStream out in different files
+- Better naming:
+    - `Stream` can now mean both bit-stream and compressed stream
+    - `Writer` can refer both to the `Writer` trait and its `impl`s or to a "compressor"
