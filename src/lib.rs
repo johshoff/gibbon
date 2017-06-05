@@ -187,7 +187,8 @@ pub struct DoubleStreamLeadTrail {
     state: DoubleStreamStateLeadTrail
 }
 
-pub fn as_bits(i: f64) -> u64 {
+pub fn to_bits(i: f64) -> u64 {
+    // TODO: once it's stable, convert this to `i.to_bits()`
     unsafe { mem::transmute(i) }
 }
 
@@ -199,7 +200,7 @@ impl DoubleStream {
     }
 
     pub fn push(&mut self, number: f64, writer: &mut Writer) {
-        let number_as_bits = as_bits(number);
+        let number_as_bits = to_bits(number);
 
         self.state = match self.state {
             DoubleStreamState::Initial => {
@@ -262,7 +263,7 @@ impl DoubleStreamLeadTrail {
     }
 
     pub fn push(&mut self, number: f64, writer: &mut Writer) {
-        let number_as_bits = as_bits(number);
+        let number_as_bits = to_bits(number);
 
         self.state = match self.state {
             DoubleStreamStateLeadTrail::Initial => {
