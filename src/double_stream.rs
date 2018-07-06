@@ -10,7 +10,6 @@
 
 pub use stream::{Writer, Reader};
 use std::cmp::min;
-use bit_repr::{to_bits, from_bits};
 
 pub enum DoubleStreamState {
     Initial,
@@ -32,7 +31,7 @@ impl DoubleStreamWriter {
     }
 
     pub fn push(&mut self, number: f64, writer: &mut Writer) {
-        let number_as_bits = to_bits(number);
+        let number_as_bits = number.to_bits();
 
         self.state = match self.state {
             DoubleStreamState::Initial => {
@@ -135,7 +134,7 @@ impl DoubleStreamParser {
 
         if let Some((value, xor)) = values {
             self.state = DoubleStreamState::Following { value: value, xor: xor };
-            Some(from_bits(value))
+            Some(f64::from_bits(value))
         } else {
             None
         }
@@ -167,7 +166,6 @@ impl<R> Iterator for DoubleStreamIterator<R> where R: Reader {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bit_repr::from_bits;
     use bit_string_stream::*;
     use vec_stream::{VecWriter, VecReader};
 
@@ -232,7 +230,7 @@ mod tests {
         // what happens if we need to create a new window using all the signficant bits
         let mut w = StringWriter::new();
         let mut c = DoubleStreamWriter::new();
-        let all_significant = from_bits(0b1000000000000000000000000000000000000000000000000000000000000001u64); // a valid number = -0.5e-323
+        let all_significant = f64::from_bits(0b1000000000000000000000000000000000000000000000000000000000000001u64); // a valid number = -0.5e-323
 
         // should not crash -- reflecting a change I did not present in the paper (but probably
         // assumed?), namely to store signficant bits - 1 in the significant bit field
@@ -251,7 +249,7 @@ mod tests {
         // what happens if we need to create a new window where there are more than 32 leading zeros
         let mut w = StringWriter::new();
         let mut c = DoubleStreamWriter::new();
-        let last_significant = from_bits(0b0000000000000000000000000000000000000000000000000000000000000001u64); // a valid number = 0.5e-323
+        let last_significant = f64::from_bits(0b0000000000000000000000000000000000000000000000000000000000000001u64); // a valid number = 0.5e-323
 
         // should not crash -- reflecting a change I did not present in the paper (but probably
         // assumed?), namely to store signficant bits - 1 in the significant bit field

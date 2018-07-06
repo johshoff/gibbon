@@ -7,7 +7,6 @@
 
 pub use stream::{Writer, Reader};
 use std::cmp::min;
-use bit_repr::to_bits;
 
 pub enum DoubleStreamStateLeadTrail {
     Initial,
@@ -34,7 +33,7 @@ impl DoubleStreamLeadTrail {
     }
 
     pub fn push(&mut self, number: f64, writer: &mut Writer) {
-        let number_as_bits = to_bits(number);
+        let number_as_bits = number.to_bits();
 
         self.state = match self.state {
             DoubleStreamStateLeadTrail::Initial => {
@@ -98,7 +97,7 @@ impl DoubleStreamLeadTrail {
                             DoubleStreamStateLeadTrail::Following {
                                 value: number_as_bits,
                                 leading_zeros: lz,
-                                meaningful_count: 64 - tz
+                                meaningful_count: meaningful_bit_count
                             }
                         }
                     }

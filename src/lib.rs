@@ -1,5 +1,3 @@
-mod bit_repr;
-
 #[cfg(test)]
 mod bit_string_stream;
 
