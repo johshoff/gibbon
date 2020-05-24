@@ -306,7 +306,8 @@ mod tests {
     }
 
     #[test]
-    fn no_panic() {
+    fn read_aligned_64() {
+        // This test case triggers a read of 64 bits exactly aligned to the word boundry.
         let case = vec![-75.01536474599993, -75.00911189799993, 114.37647545700004];
 
         let mut writer = VecWriter::new();
