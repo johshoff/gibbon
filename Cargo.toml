@@ -12,3 +12,5 @@ documentation = "https://docs.rs/gibbon"
 [dev-dependencies]
 csv = "0.14"
 time = "0.1"
+libwhisper = { path = "../libwhisper" }
+
