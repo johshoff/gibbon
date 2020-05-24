@@ -83,9 +83,16 @@ impl<'a> Reader for VecReader<'a> {
         } else {
             let remaining_bits_current_word = 64 - self.read_bits_current_index;
             if count <= remaining_bits_current_word {
+                let current_index = self.index;
                 self.read_bits_current_index += count;
+
+                if (self.read_bits_current_index == 64) {
+                    self.index += 1;
+                    self.read_bits_current_index = 0;
+                }
+
                 let mask = 0xFFFFFFFFFFFFFFFF >> (64 - count);
-                Some(self.bit_vector[self.index] >> (remaining_bits_current_word - count) & mask)
+                Some(self.bit_vector[current_index] >> (remaining_bits_current_word - count) & mask)
             } else {
                 let bits_former = remaining_bits_current_word;
                 let bits_latter = count - remaining_bits_current_word;
