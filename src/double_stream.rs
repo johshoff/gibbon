@@ -304,4 +304,26 @@ mod tests {
             assert_eq!(*from_vector, from_stream);
         }
     }
+
+    #[test]
+    fn no_panic() {
+        let case = vec![-75.01536474599993, -75.00911189799993, 114.37647545700004];
+
+        let mut writer = VecWriter::new();
+        let mut stream = DoubleStreamWriter::new();
+
+        for value in case.iter().copied() {
+            stream.push(value, &mut writer);
+        }
+
+        let VecWriter {
+            bit_vector,
+            used_bits_last_elm,
+        } = writer;
+
+        let reader = DoubleStreamIterator::new(VecReader::new(&bit_vector, used_bits_last_elm));
+
+        let read: Vec<f64> = reader.collect();
+        assert_eq!(&read[..], &case[..]);
+    }
 }
